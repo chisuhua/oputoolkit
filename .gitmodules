@@ -1,0 +1,9 @@
+[submodule "ptxasm"]
+	path = ptxasm
+	url = git@github.com:chisuhua/ptxasm.git
+[submodule "opuarch"]
+	path = opuarch
+	url = git@github.com:chisuhua/opuarch.git
+[submodule "opuas"]
+	path = opuas
+	url = git@github.com:chisuhua/opuas.git
