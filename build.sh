@@ -1,10 +1,10 @@
 #!/bin/bash
 SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") >/dev/null && pwd)
-if [ ! -n "$OPUAS_TOOL_BUILD" ]
+if [ ! -n "$OPUTOOL_BUILD" ]
 then 
     source setupenv.sh
 fi
-BUILD_DIR=$OPUAS_TOOL_BUILD
+BUILD_DIR=$OPUTOOL_BUILD
 
 
 # dependency record
@@ -13,11 +13,12 @@ TARGET_DIR=".build_targets"  # 存放目标标记文件的目录
 
 mkdir -p "$TARGET_DIR"
 
-THREADS=$(nproc)
+#THREADS=$(nproc)
 
 BUILD_OPT=(dbg rel dbgrel)
 CMD_LIST=(build clean )
-TGT_LIST=(all antlr4 ptxasm opuas)
+#TGT_LIST=(all yamlcpp antlr4 ptxasm opuas)
+TGT_LIST=(all yamlcpp antlr4 ptxasm ptxas)
 OPT=(n)
 
 [ -z "${BUILD_TYPE}" ] && BUILD_TYPE=Debug
@@ -88,10 +89,10 @@ done
 echo "will running $CMD $BUILD_ARG"
 
 function run_cmd {
-   echo $1;
-   if [ "$NORUN" != "y" ]; then
-     eval $1 || { echo "Failed to run $1"; exit 1;}
-   fi
+    echo $1;
+    if [ "$NORUN" != "y" ]; then
+        eval $1 || { echo "Failed to run $1"; exit 1;}
+    fi
 }
 
 build() {
@@ -124,22 +125,34 @@ mark_done() {
     touch "$SCRIPT_DIR/$TARGET_DIR/$target"
 }
 
+CMAKE_COMMON="-DCMAKE_INSTALL_PREFIX=$BUILD_DIR"
+
+##### yaml-cpp
+YAMLCPP_SRC=${SCRIPT_DIR}/3rdparty/yaml-cpp
+YAMLCPP_BUILD=${BUILD_DIR}/yamlcpp
+
+function build_yamlcpp {
+   run_cmd "cd $YAMLCPP_SRC"
+   run_cmd "./build.sh"
+}
+
+function clean_yamlcpp {
+   run_cmd "cd $YAMLCPP_SRC"
+   run_cmd "./build.sh clean"
+}
+
 
 ##### antlr4
 ANTLR4_SRC=${SCRIPT_DIR}/3rdparty/antlr4
-ANTLR4_BUILD=${BUILD_DIR}/antlr4
 
 function build_antlr4 {
-   run_cmd "cd $ANTLR4_SRC"
-   run_cmd "unzip -o antlr4-cpp-runtime-4.13.2-source.zip"
-   run_cmd "rm -rf $ANTLR4_BUILD; mkdir $ANTLR4_BUILD; cd $ANTLR4_BUILD; cmake $ANTLR4_SRC"
-   run_cmd "make -j 8"
-   run_cmd "DESTDIR=$BUILD_DIR make install"
+    run_cmd "cd $ANTLR4_SRC"
+    run_cmd "./build.sh"
 }
 
 function clean_antlr4 {
-    rm -rf ${ANTRL4_BUILD}
-    rm -rf "$TARGET_DIR/antlr4"
+    run_cmd "cd $ANTLR4_SRC"
+    run_cmd "./build.sh clean"
 }
 
 
@@ -149,15 +162,28 @@ PTXASM_BUILD=${BUILD_DIR}/ptxasm
 
 function build_ptxasm {
     run_cmd "cd $PTXASM_SRC"
-    run_cmd "rm -rf $PTXASM_BUILD; mkdir $PTXASM_BUILD; cd $PTXASM_BUILD; cmake $PTXASM_SRC"
-    run_cmd "make"
-    run_cmd "DESTDIR=$BUILD_DIR make install"
+    run_cmd "./build.sh"
 }
 
 function clean_ptxasm {
-    rm -rf ${PTXASM_BUILD}
-    rm -rf "$TARGET_DIR/ptxasm"
+    run_cmd "cd $PTXASM_SRC"
+    run_cmd "./build.sh clean"
 }
+
+##### ptxas
+PTXAS_SRC=${SCRIPT_DIR}/ptxas
+PTXAS_BUILD=${BUILD_DIR}/ptxas
+
+function build_ptxas {
+    run_cmd "cd $PTXAS_SRC"
+    run_cmd "./build.sh"
+}
+
+function clean_ptxas {
+    run_cmd "cd $PTXASM_SRC"
+    run_cmd "./build.sh clean"
+}
+
 
 ##### opuas
 OPUAS_SRC=${SCRIPT_DIR}/opuas
@@ -165,9 +191,9 @@ OPUAS_BUILD=${BUILD_DIR}/opuas
 
 function build_opuas {
     run_cmd "cd $OPUAS_SRC"
-    run_cmd "rm -rf $OPUAS_BUILD; mkdir $OPUAS_BUILD; cd $OPUAS_BUILD; cmake $OPUAS_SRC"
+    run_cmd "rm -rf $OPUAS_BUILD; mkdir $OPUAS_BUILD; cd $OPUAS_BUILD; cmake -DCMAKE_INSTALL_PREFIX=$BUILD_DIR $OPUAS_SRC"
     run_cmd "make"
-    run_cmd "DESTDIR=$BUILD_DIR make install"
+    run_cmd "make install"
 }
 
 function clean_opuas {
@@ -184,12 +210,15 @@ main() {
         if [[ $TGT == "all" ]]; then
             build antlr4
             build ptxasm
+            build ptxas
+            #build opuas
         else
             build $TGT
         fi
     elif [[ $CMD == "clean" ]]; then
         clean_antlr4
         clean_ptxasm
+        clean_opuas
     fi
 }
 
